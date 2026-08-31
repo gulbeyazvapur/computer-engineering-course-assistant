@@ -276,6 +276,136 @@ def _clean_near_duplicate_repetition(text: str) -> str:
     return text
 
 
+# Intra-sentence phrase-repetition guard (see
+# _clean_intra_sentence_phrase_repetition): both guards above only ever
+# compare whole sentences (split on _SENTENCE_BOUNDARY_PATTERN, i.e. on
+# ".!?" followed by whitespace) against each other. A real captured
+# phi-4-mini answer (SOLID/LSP, see tests/fixtures/solid_phrase_loop_raw.txt)
+# showed a different failure shape: the model got stuck repeating the
+# 2-word phrase "alt sınıfın" (~90 times) with a plain space between each
+# repeat and no sentence-ending punctuation anywhere in the run, so the
+# whole pathological run is (from the sentence guards' point of view) a
+# single "sentence" -- there is nothing else to compare it against, and
+# neither guard above can see inside it. This third, independent guard
+# runs at word granularity instead of sentence granularity to catch
+# exactly that shape, using the same "keep the first occurrence, drop the
+# rest" strategy as the two guards above.
+_WORD_BOUNDARY_PATTERN = re.compile(r"(\s+)")
+
+# Deliberately starts at 2, not 1: a single repeated word is very often a
+# short, legitimate Turkish stopword ("ve", "ile", "bir", "bu") that can
+# plausibly appear twice in a row (e.g. "ve ve" style disfluency, or
+# adjacent list punctuation) without being a generation loop -- see the
+# stopword regression test. A 2-word phrase like "alt sınıfın" carries
+# enough meaning that its repetition is a much stronger signal.
+_PHRASE_MIN_NGRAM_WORDS = 2
+# Longer than this and the scan cost grows for no benefit observed in
+# practice; the real captured loop is a 2-word phrase.
+_PHRASE_MAX_NGRAM_WORDS = 5
+# Extra defense-in-depth alongside the >=2-word rule above: even a 2-word
+# phrase built from very short words (e.g. "ve o") is excluded unless the
+# phrase text itself has some real length.
+_PHRASE_MIN_NGRAM_CHARS = 6
+# Calibrated against the real SOLID/LSP fixture: legitimate, non-looping
+# reuse of the exact same 2-word phrase within the same answer (the LSP
+# section legitimately says "alt sınıfın alt sınıfın" -- 2 consecutive
+# repeats -- twice, in two different, otherwise-normal sentences, before
+# the real loop starts) never exceeds 2 consecutive repeats. The actual
+# pathological loop repeats the phrase 92 times in a row. A threshold of
+# 6 sits far above the legitimate case and far below the observed
+# pathological one, favoring false-positive avoidance.
+_PHRASE_MIN_OCCURRENCES = 6
+
+# Characters that end a Turkish sentence, used only to decide where a
+# phrase-loop cut is allowed to land -- see _trim_to_last_complete_sentence.
+_SENTENCE_TERMINATORS = ".!?"
+
+
+def _trim_to_last_complete_sentence(text: str) -> str:
+    """Backs a phrase-loop cut off to the end of the last sentence that
+    actually finishes with ".", "!" or "?", so _clean_intra_sentence_
+    phrase_repetition never hands back a dangling fragment like "...
+    böylece alt sınıfın" -- the loop's own lead-in clause never reaches a
+    terminator either (that's *why* it degenerated into a loop instead of
+    ending normally), so it is dropped along with the loop itself; any
+    earlier, already-complete sentence in the kept text (e.g. the LSP
+    section's first two, perfectly normal sentences in the real SOLID
+    fixture) is preserved untouched.
+
+    If no sentence terminator exists anywhere in text, there is no safe
+    place to cut back to, so text is returned unchanged rather than
+    emptied -- keeping some content is better than returning none.
+    """
+    stripped = text.rstrip()
+    if not stripped or stripped[-1] in _SENTENCE_TERMINATORS:
+        return stripped
+
+    last_terminator = max(stripped.rfind(ch) for ch in _SENTENCE_TERMINATORS)
+    if last_terminator == -1:
+        return stripped
+
+    return stripped[: last_terminator + 1]
+
+
+def _clean_intra_sentence_phrase_repetition(text: str) -> str:
+    """Trims a degenerate word/phrase-level repetition loop that happens
+    *within* what sentence-boundary splitting sees as a single sentence
+    (no ".!?" between repeats) -- see the module comment above for why
+    _clean_repetitive_output and _clean_near_duplicate_repetition cannot
+    see this shape.
+
+    Scans the whole text as a flat sequence of whitespace-separated words
+    for a short phrase (_PHRASE_MIN_NGRAM_WORDS.._PHRASE_MAX_NGRAM_WORDS
+    words long, and at least _PHRASE_MIN_NGRAM_CHARS characters) that
+    repeats verbatim, back-to-back, at least _PHRASE_MIN_OCCURRENCES times.
+    On the first such run found, keeps everything through the end of the
+    first occurrence of the phrase and drops everything from the second
+    occurrence onward -- the same conservative strategy as the two guards
+    above, just at word granularity instead of sentence granularity -- and
+    then backs that cut off to the end of the last complete sentence (see
+    _trim_to_last_complete_sentence) so the result never ends on a
+    dangling mid-clause fragment.
+
+    Only ever removes text; never rewrites, summarizes, or adds anything.
+    """
+    if not text:
+        return text
+
+    parts = _WORD_BOUNDARY_PATTERN.split(text)
+    words = [w.strip() for w in parts[0::2]]
+    total = len(words)
+
+    if total < _PHRASE_MIN_NGRAM_WORDS * _PHRASE_MIN_OCCURRENCES:
+        return text
+
+    for start in range(total):
+        for n in range(_PHRASE_MIN_NGRAM_WORDS, _PHRASE_MAX_NGRAM_WORDS + 1):
+            if start + n * _PHRASE_MIN_OCCURRENCES > total:
+                continue
+
+            phrase = words[start : start + n]
+            if not all(phrase):
+                continue
+            if len(" ".join(phrase)) < _PHRASE_MIN_NGRAM_CHARS:
+                continue
+
+            occurrences = 1
+            cursor = start + n
+            while cursor + n <= total and words[cursor : cursor + n] == phrase:
+                occurrences += 1
+                cursor += n
+
+            if occurrences >= _PHRASE_MIN_OCCURRENCES:
+                # parts[] alternates word/separator, so word index
+                # (start + n) begins at parts[2 * (start + n)] -- cut
+                # right before it, same as the sentence-level guards.
+                cutoff = 2 * (start + n) - 1
+                kept = "".join(parts[:cutoff]).rstrip()
+                return _trim_to_last_complete_sentence(kept)
+
+    return text
+
+
 def _strip_reasoning(text: str) -> str:
     cleaned = _THINK_TAG_PATTERN.sub("", text)
 
@@ -475,6 +605,31 @@ def generate_answer(messages: list[dict[str, str]]) -> str:
             )
 
         answer = near_dup_cleaned
+
+        # Third, independent pass for a degenerate loop that repeats a
+        # short phrase *within* a single sentence (no ".!?" between
+        # repeats) -- see _clean_intra_sentence_phrase_repetition. Isolated
+        # in its own try/except for the same reason as the two guards
+        # above: a bug here must degrade to "skip it", never a 500 for an
+        # answer that was otherwise fine.
+        try:
+            phrase_cleaned = _clean_intra_sentence_phrase_repetition(answer)
+        except Exception:
+            logger.warning(
+                "Intra-sentence phrase repetition guard failed; keeping "
+                "near-duplicate-guard-cleaned answer unchanged.",
+                exc_info=True,
+            )
+            phrase_cleaned = answer
+
+        if len(phrase_cleaned) != len(answer):
+            logger.info(
+                "Intra-sentence phrase repetition trimmed: %d -> %d chars",
+                len(answer),
+                len(phrase_cleaned),
+            )
+
+        answer = phrase_cleaned
 
         if not answer:
             raise RuntimeError("Model boş cevap döndürdü.")

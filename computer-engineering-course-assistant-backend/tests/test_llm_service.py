@@ -868,3 +868,242 @@ def test_leak_guard_failure_falls_back_to_unchanged_answer(monkeypatch):
     )
 
     assert answer == _REAL_AUTH_ANSWER
+
+
+def test_phrase_guard_a_cleans_real_solid_phrase_loop_fixture():
+    """A. Real SOLID/LSP fixture: the ~90x "alt sınıfın" run-on loop (no
+    sentence-ending punctuation between repeats, invisible to both the
+    exact and near-duplicate sentence-level guards) must be trimmed, and
+    the result must end on a complete sentence -- never on the dangling
+    "...böylece alt sınıfın" fragment the raw word-level cut alone would
+    produce, since the loop's own lead-in clause never reaches a
+    terminator either."""
+    raw = (_FIXTURES_DIR / "solid_phrase_loop_raw.txt").read_text(encoding="utf-8")
+
+    after_leak = llm_service._clean_prompt_leakage(raw)
+    after_exact = llm_service._clean_repetitive_output(after_leak)
+    after_near_dup = llm_service._clean_near_duplicate_repetition(after_exact)
+
+    # Neither existing guard can see this shape at all.
+    assert after_exact == after_leak
+    assert after_near_dup == after_exact
+
+    cleaned = llm_service._clean_intra_sentence_phrase_repetition(after_near_dup)
+
+    assert len(after_near_dup) == 2295
+    assert len(cleaned) == 1084
+    assert cleaned.count("alt sınıfın alt sınıfın alt sınıfın") == 0
+    assert cleaned[-1] in ".!?"
+    assert not cleaned.endswith("alt sınıfın")
+    assert not cleaned.rstrip().endswith("alt sınıfın")
+    assert "Single Responsibility Principle" in cleaned
+    assert "Open/Closed Principle" in cleaned
+    assert "Liskov Substitution Principle" in cleaned
+    # The LSP section's two genuinely complete lead-in sentences survive;
+    # only the never-terminated pathological clause after them is cut.
+    assert "kullanılabileceğini önerir." in cleaned
+    assert "taklit edebilmesi gerektiği anlamına gelir." in cleaned
+
+
+def test_phrase_guard_b_trims_explicit_two_word_phrase_loop():
+    """B. A synthetic but explicit repeated 2-token phrase loop must be
+    trimmed down to zero occurrences of the phrase, backed off to the
+    last complete sentence before the loop started (the kept single
+    occurrence itself has no sentence-ending punctuation, so it is
+    dropped along with the rest of the loop)."""
+    text = "Giriş cümlesi burada. " + "alt sınıfın " * 30 + "bitti."
+
+    cleaned = llm_service._clean_intra_sentence_phrase_repetition(text)
+
+    assert cleaned == "Giriş cümlesi burada."
+    assert "alt sınıfın" not in cleaned
+    assert "bitti" not in cleaned
+    assert cleaned[-1] in ".!?"
+
+
+def test_phrase_guard_keeps_kept_occurrence_when_it_ends_a_sentence():
+    """If the single kept occurrence of the looping phrase is itself
+    immediately followed by a sentence terminator in the original text,
+    no additional trimming is needed -- the cut already lands on a
+    complete sentence."""
+    text = "Giriş cümlesi burada. " + "alt sınıfın. " * 8 + "Son cümle burada."
+
+    cleaned = llm_service._clean_intra_sentence_phrase_repetition(text)
+
+    assert cleaned == "Giriş cümlesi burada. alt sınıfın."
+
+
+def test_trim_to_last_complete_sentence_leaves_text_unchanged_with_no_terminator():
+    """If a phrase loop is detected but there is no sentence-ending mark
+    anywhere in the text (an extreme, unrealistic case), there is no safe
+    place to cut back to, so the word-level cut is returned as-is rather
+    than emptying the answer."""
+    text = "alt sınıfın " * 40
+
+    cleaned = llm_service._clean_intra_sentence_phrase_repetition(text)
+
+    assert cleaned == "alt sınıfın"
+
+
+def test_phrase_guard_c_preserves_normal_terminology_repetition():
+    """C. Ordinary repeated terminology across distinct sentences (a
+    subclass/superclass sentence that legitimately reuses "alt sınıf")
+    must be left completely unchanged."""
+    text = (
+        "Alt sınıf üst sınıfın yerine geçer ve başka bir alt sınıf da aynı "
+        "sözleşmeyi korur."
+    )
+
+    assert llm_service._clean_intra_sentence_phrase_repetition(text) == text
+
+
+def test_phrase_guard_d_does_not_trim_short_stopword_repeats():
+    """D. A short stopword repeated once ("ve ve") must not be aggressively
+    trimmed -- single-word phrases are never considered at all."""
+    text = "Bu ve ve şu birlikte kullanılabilir."
+
+    assert llm_service._clean_intra_sentence_phrase_repetition(text) == text
+
+
+@pytest.mark.parametrize(
+    "real_answer",
+    [
+        _REAL_STACK_QUEUE_ANSWER_ND,
+        _REAL_ASTAR_ANSWER,
+        _REAL_AUTH_ANSWER,
+        _REAL_INTERRUPT_ANSWER,
+        _REAL_DEADLOCK_ANSWER,
+        _REAL_SCALING_ANSWER,
+        _REAL_PROCESS_THREAD_ANSWER,
+    ],
+)
+def test_phrase_guard_leaves_real_answers_untouched(real_answer):
+    """E. Normal real answers (incl. Deadlock's four Coffman conditions,
+    A*'s g(n)/h(n), process vs. thread, scaling) are never touched."""
+    assert (
+        llm_service._clean_intra_sentence_phrase_repetition(real_answer)
+        == real_answer
+    )
+
+
+def test_phrase_guard_f_hpa_fixture_unchanged_after_earlier_guards():
+    """F. Running the new guard after the exact+near-duplicate guards on
+    the real HPA fixture must not change their already-verified result
+    (2818 -> 1019 chars)."""
+    raw = (_FIXTURES_DIR / "hpa_repetitive_raw.txt").read_text(encoding="utf-8")
+    after_exact = llm_service._clean_repetitive_output(raw)
+    after_near_dup = llm_service._clean_near_duplicate_repetition(after_exact)
+
+    cleaned = llm_service._clean_intra_sentence_phrase_repetition(after_near_dup)
+
+    assert len(after_near_dup) == 1019
+    assert cleaned == after_near_dup
+
+
+def test_phrase_guard_g_recursion_fixture_unchanged_after_earlier_guards():
+    """G. Same non-regression check for the real Recursion fixture
+    (2617 -> 1201 -> 965 chars via the two existing guards)."""
+    after_exact = (
+        _FIXTURES_DIR / "recursion_after_exact_guard.txt"
+    ).read_text(encoding="utf-8")
+    after_near_dup = llm_service._clean_near_duplicate_repetition(after_exact)
+
+    cleaned = llm_service._clean_intra_sentence_phrase_repetition(after_near_dup)
+
+    assert len(after_near_dup) == 965
+    assert cleaned == after_near_dup
+
+
+def test_phrase_guard_h_leaves_html_generics_and_math_syntax_untouched():
+    """H. HTML tags, generics and math-style notation must never be
+    mistaken for a phrase loop."""
+    samples = [
+        "<div>İçerik</div> ve <a>bağlantı</a> burada yer alır.",
+        "List<List<int>> kullanarak iki boyutlu bir yapı oluşturabiliriz.",
+        "g(n) ve h(n) toplanarak f(n) elde edilir; her ikisi de önemlidir.",
+        "TCP/IP katmanlı bir yapıya sahiptir ve TCP/IP yaygın olarak kullanılır.",
+        "CPU, CPU scheduling algoritmaları ile yönetilir.",
+    ]
+    for sample in samples:
+        assert llm_service._clean_intra_sentence_phrase_repetition(sample) == sample
+
+
+def test_phrase_guard_i_leaves_fallback_untouched():
+    """I. The fixed fallback answer is left exactly as-is."""
+    from app.services.rag_service import FALLBACK_ANSWER
+
+    assert (
+        llm_service._clean_intra_sentence_phrase_repetition(FALLBACK_ANSWER)
+        == FALLBACK_ANSWER
+    )
+
+
+def test_phrase_guard_empty_and_single_word():
+    assert llm_service._clean_intra_sentence_phrase_repetition("") == ""
+    assert llm_service._clean_intra_sentence_phrase_repetition("Merhaba") == "Merhaba"
+
+
+def test_phrase_guard_is_pure_cpu_string_processing_and_fast():
+    """Performance: negligible-cost local string processing, no model or
+    GPU interaction. Benchmarked against the real SOLID fixture and a
+    10KB normal-text sample."""
+    solid = (_FIXTURES_DIR / "solid_phrase_loop_raw.txt").read_text(encoding="utf-8")
+    normal_10kb = (_REAL_DEADLOCK_ANSWER * 20)[:10_000]
+
+    for sample in (solid, normal_10kb):
+        start = time.perf_counter()
+        for _ in range(20):
+            llm_service._clean_intra_sentence_phrase_repetition(sample)
+        elapsed_ms = (time.perf_counter() - start) / 20 * 1000
+        assert elapsed_ms < 50
+
+
+def test_generate_answer_applies_phrase_repetition_cleaning(monkeypatch):
+    """Pipeline order: raw -> _strip_reasoning -> leak guard -> exact guard
+    -> near-duplicate guard -> intra-sentence phrase guard -> final answer,
+    all within one generate_answer call (no extra model call)."""
+    raw = (_FIXTURES_DIR / "solid_phrase_loop_raw.txt").read_text(encoding="utf-8")
+    call_count = 0
+
+    class _CountingClient(_FakeChatClient):
+        def complete_streaming_chat(self, messages):
+            nonlocal call_count
+            call_count += 1
+            yield from super().complete_streaming_chat(messages)
+
+    monkeypatch.setattr(
+        llm_service, "foundry_provider", _FakeProvider(_CountingClient(raw))
+    )
+
+    answer = llm_service.generate_answer(
+        [{"role": "system", "content": "x"}, {"role": "user", "content": "y"}]
+    )
+
+    assert call_count == 1
+    assert len(answer) == 1084
+    assert answer[-1] in ".!?"
+    assert "Liskov Substitution Principle" in answer
+
+
+def test_phrase_guard_failure_falls_back_to_near_duplicate_guard_result(
+    monkeypatch,
+):
+    """If the phrase guard raises unexpectedly, generate_answer must keep
+    the near-duplicate-guard-cleaned answer unchanged and return normally
+    -- never surface as a 500 for an otherwise-fine answer."""
+    monkeypatch.setattr(
+        llm_service,
+        "_clean_intra_sentence_phrase_repetition",
+        lambda text: (_ for _ in ()).throw(RuntimeError("boom")),
+    )
+    monkeypatch.setattr(
+        llm_service,
+        "foundry_provider",
+        _FakeProvider(_FakeChatClient(_REAL_AUTH_ANSWER)),
+    )
+
+    answer = llm_service.generate_answer(
+        [{"role": "system", "content": "x"}, {"role": "user", "content": "y"}]
+    )
+
+    assert answer == _REAL_AUTH_ANSWER
