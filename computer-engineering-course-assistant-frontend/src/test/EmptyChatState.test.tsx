@@ -4,9 +4,9 @@ import EmptyChatState from "../components/chat/EmptyChatState";
 test("A. sade başlık ve açıklama görünür", () => {
   render(<EmptyChatState />);
 
-  expect(screen.getByText("Ders Asistanı")).toBeInTheDocument();
+  expect(screen.getByText("Sorularını Sormaya Başla")).toBeInTheDocument();
   expect(
-    screen.getByText("Yüklediğiniz ders materyalleri üzerinden soru sorun."),
+    screen.getByText("Seçtiğin dersin materyallerine göre soru sorabilirsin."),
   ).toBeInTheDocument();
 });
 
@@ -21,12 +21,11 @@ test("B. eski landing-page metinleri artık görünmüyor", () => {
   ).not.toBeInTheDocument();
 });
 
-test("C. 'Henüz sohbet başlamadı' durumu ve yönlendirme metni görünür", () => {
+test("C. yönlendirme metni görünür", () => {
   render(<EmptyChatState />);
 
-  expect(screen.getByText("Henüz sohbet başlamadı.")).toBeInTheDocument();
   expect(
-    screen.getByText("Bir ders seçip ilk sorunuzu yazarak başlayabilirsiniz."),
+    screen.getByText("Bir ders seçip ilk sorunu yazarak başlayabilirsin."),
   ).toBeInTheDocument();
 });
 
