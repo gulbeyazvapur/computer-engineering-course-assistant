@@ -1,0 +1,21 @@
+Kubernetes'in Horizontal Pod Autoscaler (HPA), bir Kubernetes grubunda çalışan pod sayısını CPU kullanımı gibi belirli metriklere göre otomatik olarak ölçeklendirir. HPA'nın ölçekleme algoritması, CPU kullanım oranı için belirlenen bir hedefi izler. Bu hedef, genellikle bir pod başına belirli bir CPU kullanımı aralığında tutulur.
+
+HPA, pod başına CPU kullanım raporlarını toplar ve hedef oranla karşılaştırır. Hedef oranun üzerinde bir pod başına CPU kullanım varsa, HPA yeni pod'lar oluşturur. Öte yandan, pod başına CPU kullanım hedef oranın altında ise, HPA mevcut pod'ları azaltabilir.
+
+HPA'nın ölçekleme işlemi, pod başına CPU kullanım raporlarını toplamak için Kubernetes'in pod ve pod'lar içindeki pod'lar için CPU kullanım raporlaması mekanizmasını kullanır. Bu mekanizma, pod başına CPU kullanım raporlarını toplamak için pod'lar için CPU kullanım raporlaması mekanizmasını kullanır.
+
+HPA ayrıca, pod başına CPU kullanım raporlarını toplamak için pod'lar için CPU kullanım raporlaması mekanizmasını kullanır. Bu mekanizma, pod başına CPU kullanım raporlarını toplamak için pod'lar için CPU kullanım raporlaması mekanizmasını kullanır.
+
+HPA ayrıca, pod başına CPU kullanım raporlarını toplamak için pod'lar için CPU kullanım raporlaması mekanizmasını kullanır. Bu mekanizma, pod başına CPU kullanım raporlarını toplamak için pod'lar için CPU kullanım raporlaması mekanizmasını kullanır.
+
+HPA ayrıca, pod başına CPU kullanım raporlarını toplamak için pod'lar için CPU kullanım raporlaması mekanizmasını kullanır. Bu mekanizma, pod başına CPU kullanım raporlarını toplamak için pod'lar için CPU kullanım raporlaması mekanizmasını kullanır.
+
+HPA ayrıca, pod başına CPU kullanım raporlarını toplamak için pod'lar için CPU kullanım raporlaması mekanizmasını kullanır. Bu mekanizma, pod başına CPU kullanım raporlarını toplamak için pod'lar için CPU kullanım raporlaması mekanizmasını kullanır.
+
+HPA ayrıca, pod başına CPU kullanım raporlarını toplamak için pod'lar için CPU kullanım raporlaması mekanizmasını kullanır. Bu mekanizma, pod başına CPU kullanım raporlarını toplamak için pod'lar için CPU kullanım raporlaması mekanizmasını kullanır.
+
+HPA ayrıca, pod başına CPU kullanım raporlarını toplamak için pod'lar için CPU kullanım raporlaması mekanizmasını kullanır. Bu mekanizma, pod başına CPU kullanım raporlarını toplamak için pod'lar için CPU kullanım raporlaması mekanizmasını kullanır.
+
+HPA ayrıca, pod başına CPU kullanım raporlarını toplamak için pod'lar için CPU kullanım raporlaması mekanizmasını kullanır. Bu mekanizma, pod başına CPU kullanım raporlarını toplamak için pod'lar için CPU kullanım raporlaması mekanizmasını kullanır.
+
+HPA ayrıca, pod başına CPU kullanım raporlarını toplamak için pod'lar için CPU kullanım raporlaması mekanizmasını kullanır. Bu mekanizma, pod başına CPU kullanım rap

@@ -1,0 +1,54 @@
+<DERS_MATERYALI>
+[SOURCE: nesne_yonelimli_programlama_rag_kaynagi.pdf | CHUNK: 1]
+Polymorphism
+Çok biçimlilik, aynı arayüzün farklı sınıflar tarafından farklı biçimde uygulanabilmesini sağlar.
+Üst tür referansı üzerinden alt tür davranışının çalıştırılması esnek tasarımın temel
+araçlarından biridir.
+
+Abstraction
+Soyutlama, gereksiz ayrıntıları gizleyip önemli davranışları öne çıkarır. Interface ve abstract
+class yapıları, bir bileşenin ne yapacağını tanımlayıp nasıl yapıldığını uygulamaya bırakabilir.
+
+Kısa Test Soruları
+1
+Nesne ve Sınıf kavramını kısaca açıkla.
+2
+Encapsulation nedir ve temel amacı nedir?
+3
+Inheritance nedir ve temel amacı nedir?
+4
+Polymorphism nedir ve temel amacı nedir?
+5
+Bu dokümanda yer almayan bir ayrıntı sorulduğunda asistan nasıl davranmalıdır?
+RAG notu: Asistanın yalnızca bu dokümandaki bilgiye dayanması, kaynakta bulunmayan ayrıntıları
+uydurmaması beklenir.
+
+---
+
+[SOURCE: nesne_yonelimli_programlama_rag_kaynagi.pdf | CHUNK: 0]
+Nesne Yönelimli Programlama
+Bilgisayar Mühendisliği Ders Asistanı - Yerel RAG test kaynağı
+Bu doküman, ders asistanının PDF yükleme, metin çıkarma, chunking, embedding, retrieval ve
+kaynak gösterimli cevap üretme akışını test etmek için hazırlanmıştır.
+
+Nesne ve Sınıf
+Sınıf, nesnelerin özelliklerini ve davranışlarını tanımlayan bir şablondur. Nesne ise bu sınıftan
+üretilen somut örnektir. Bir nesne durum bilgisini alanlarda, davranışlarını ise metotlarda tutar.
+
+Encapsulation
+Kapsülleme, bir nesnenin iç durumunu doğrudan dış erişimden korumayı ve kontrollü erişim
+sağlamayı amaçlar. Bu yaklaşım bağımlılığı azaltır ve sınıfın iç uygulamasının değişmesini
+kolaylaştırır.
+
+Inheritance
+Kalıtım, bir sınıfın başka bir sınıfın özellik ve davranışlarını devralmasını sağlar. Ortak
+davranışların tekrarını azaltabilir; ancak gereksiz kalıtım sıkı bağımlılık oluşturabileceği için
+dikkatli kullanılmalıdır.
+</DERS_MATERYALI>
+
+<SORU>
+SOLID prensiplerini (Single Responsibility, Open/Closed vb.) ayrıntılı açıkla.
+</SORU>
+
+[YALNIZCA SORUN]
+Sorunun cevabı <DERS_MATERYALI> içinde verilen bağlama dayandır. Sorulacak tek konu, SOLID prensiplerinin ayrıntılı açıklaması. Sorulacak alt konular, her bir SOLID prensibi için ayrı ayrı açıklamalar. Bağlamda belirtilmeyen teknik bilgi, yöntem, algoritma, tarihçe veya somut gerçek dünya örneği eklememek zorundayız. Sorulacak alt konular şunlardır: Single Responsibility, Open/Closed, L

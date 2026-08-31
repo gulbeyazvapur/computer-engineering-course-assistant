@@ -1,0 +1,4 @@
+Web programlama, istemci-sunucu model, HTTP metotları, REST API'ler ve frontend/backend kavramları hakkında bilgi sağladığı için, soruyu yanıtlamak için gerekli bilgiyi içeriyor. Ancak, GraphQL sorgu dilinin REST'ten farkını ve resolver mekanizmasını açıklamak için gerekli ayrıntılar kaynağa dahil edilmemiştir. Bu bilgi yüklenen ders materyallerinde bulunmuyor.
+
+<|DERS_MATERYALI|> Bu bilgi yüklenen ders materyallerinde bulunmuyor.
+</DERS_MATERYALI>
